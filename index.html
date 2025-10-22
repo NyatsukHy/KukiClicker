@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attension is ALL you need</title>
+    <title>Attention is all you need</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -12,9 +12,11 @@
         
         body {
             font-family: 'Inter', sans-serif;
+            /* Using a slightly darker background to make the #172554 grid pop */
+            background-color: #020617; 
         }
-        
-        /* The main pink surface container */
+
+        /* The main deep blue surface container */
         #grid-container {
             width: 100%;
             height: 100%;
@@ -22,7 +24,9 @@
             grid-template-columns: repeat(10, 1fr);
             grid-template-rows: repeat(10, 1fr);
             border-radius: 1rem;
-            box-shadow: 0 0 30px rgba(255, 105, 180, 0.5); /* Pink shadow for glow effect */
+            /* Maintaining a bright blue glow for contrast */
+            box-shadow: 0 0 30px rgba(0, 150, 255, 0.4); 
+            background-color: #172554; /* Custom requested color for the grid base */
         }
         
         /* Individual grid cells */
@@ -30,35 +34,36 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.25rem; /* text-xl */
-            font-weight: 700; /* font-bold */
+            font-size: 1.25rem; 
+            font-weight: 700; 
             cursor: pointer;
             transition: background-color 0.1s, transform 0.1s;
-            border: 1px solid rgba(0, 0, 0, 0.1); /* Subtle dark border on pink */
-            color: white; /* Default text color */
-             background-color: #ec4899; /* Pink-500 when active */
+            border: 1px solid rgba(0, 0, 0, 0.2); 
+            color: white; 
+            background-color: #1e293b; /* Custom requested color */
         }
 
         /* Hover effect */
         .grid-cell:hover:not(.inactive) {
             opacity: 0.9;
             transform: scale(1.02);
+            background-color: #1a2a61; /* Slightly lighter hover for feedback */
         }
 
         /* Inactive state before the game starts or when paused/stopped */
         .grid-cell.inactive {
             cursor: not-allowed;
-            background-color: #52525b; /* Gray-600 for inactive cells */
-            color: #a1a1aa; /* Gray-400 text */
+            background-color: #101c34; /* Darker variant blending with background */
+            color: #4a5c71; 
             pointer-events: none; 
             transition: none;
         }
         
         /* Correctly clicked cell */
         .grid-cell.clicked {
-            background-color: #9d174d; /* Pink-800, darker shade */
+            background-color: #0d1721; /* Almost invisible, very dark blue */
             color: white;
-            opacity: 0.2; /* Make it fade out */
+            opacity: 0.1; 
             pointer-events: none;
         }
 
@@ -71,7 +76,7 @@
 
         /* Active button state transition */
         .btn-primary:active {
-            box-shadow: 0 0px 0 #a2125e;
+            box-shadow: 0 0px 0 #005a91;
             top: 4px;
         }
         
@@ -80,49 +85,105 @@
             opacity: 0;
             pointer-events: none;
         }
+
+        /* Transition for the Leaderboard Sidebar */
+        #records-sidebar {
+            transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            width: 0;
+            opacity: 0;
+            /* Use z-index to ensure the sidebar sits above other elements when open */
+            z-index: 50; 
+        }
+        #records-sidebar.expanded {
+            width: 300px; /* Target width when open */
+            opacity: 1;
+        }
+
+        /* Ensure timer uses fixed-width numbers */
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center p-4">
+<body class="text-gray-100 min-h-screen flex flex-row items-start justify-center p-4">
 
-    <div id="timer" class="text-6xl font-extrabold text-cyan-400 mb-6 mt-4 tabular-nums">00.00</div>
+    <!-- Main Game Content (Central Column) -->
+    <div class="flex flex-col items-center flex-shrink-0 w-full max-w-xl">
+        <h1 class="text-2xl font-extrabold text-gray-200 mb-4">ATTENTION IS ALL YOU NEED</h1>
+        
+        <!-- Name Input Field -->
+        <div class="w-full max-w-xs mb-6">
+            <label for="player-name" class="block text-sm font-medium text-gray-400 mb-1">Your Name</label>
+            <input type="text" id="player-name" maxlength="15" placeholder="Enter your name"
+                   class="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition">
+        </div>
 
-    <div id="game-area" class="flex-shrink-0 relative">
-        <div id="grid-container" class="bg-pink-500">
-            <!-- Grid Cells will be inserted here by JavaScript -->
+        <div id="timer" class="text-6xl font-extrabold text-cyan-400 mb-6 tabular-nums">00.00</div>
+
+        <div id="game-area" class="flex-shrink-0 relative">
+            <div id="grid-container">
+                <!-- Grid Cells will be inserted here by JavaScript -->
+            </div>
+            
+            <!-- Blocker Overlay with SVG Lock Icon -->
+            <div id="blocker" class="absolute inset-0 bg-[#0c1524]/95 flex flex-col items-center justify-center rounded-xl transition-opacity duration-300 z-10">
+                 <!-- Lock SVG (Lucide-React style) -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-400 mb-4 animate-pulse">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span class="text-xl font-semibold text-gray-300">
+                    Grid is Locked
+                </span>
+            </div>
         </div>
         
-        <!-- Blocker Overlay with SVG Lock Icon -->
-        <div id="blocker" class="absolute inset-0 bg-gray-900/95 flex flex-col items-center justify-center rounded-xl transition-opacity duration-300 z-10">
-             <!-- Lock SVG (Lucide-React style) -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-pink-400 mb-4 animate-pulse">
-                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            <span class="text-xl font-semibold text-gray-300">
-                Grid is Locked
-            </span>
+        <div id="controls" class="flex items-center gap-4 mt-8 w-full">
+            
+            <!-- 1. Primary Button (Start/Stop) - flex-grow ensures it takes up available space -->
+            <button id="start-stop-btn" class="btn-primary flex-grow px-4 py-3 text-lg font-bold rounded-xl shadow-lg transition duration-200 
+                                                bg-cyan-600 hover:bg-cyan-700 text-white relative top-0" style="box-shadow: 0 4px 0 #005a91;">
+                Start
+            </button>
+
+            <!-- 2. Counter (Fills remaining space) - flex-grow ensures it takes up available space -->
+            <div id="counter" class="flex-grow px-4 py-3 bg-slate-700 text-lg font-semibold rounded-xl text-center">
+                Next: 1
+            </div>
+
+            <!-- 3. Small Reset Button (Fixed width) -->
+            <button id="reset-btn" class="h-12 w-12 flex-shrink-0 text-sm font-bold rounded-xl shadow-inner transition duration-200 
+                                           bg-slate-700 hover:bg-slate-600 text-gray-300">
+                <span class="block px-1">RST</span>
+            </button>
+            
+            <!-- 4. Toggle Records Button (SVG Icon) (Fixed width, now on the far right) -->
+            <button id="toggle-records-btn" class="h-12 w-12 flex-shrink-0 text-sm font-bold rounded-xl shadow-inner transition duration-200 
+                                            bg-slate-700 hover:bg-slate-600 text-gray-300">
+                <!-- List/Trophy SVG Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mx-auto">
+                    <path d="M12 15V3"/>
+                    <path d="M18 10V3"/>
+                    <path d="M6 21v-3.83c0-.49.18-.95.5-1.3l1.9-2.26c.4-.47.6-.68 1.1-.8l.2.3"/>
+                    <path d="M12 3c-1.1 1.05-2.02 2.3-2.67 3.75"/>
+                    <path d="M12 3c1.1 1.05 2.02 2.3 2.67 3.75"/>
+                    <path d="M12 15a4 4 0 0 1-4-4v-1.5"/>
+                    <path d="M12 15a4 4 0 0 0 4-4v-1.5"/>
+                </svg>
+            </button>
         </div>
     </div>
     
-    <div id="controls" class="flex items-center gap-4 mt-8 w-full max-w-xl">
-        <!-- 1. Primary Button (Start/Stop) -->
-        <button id="start-stop-btn" class="btn-primary flex-grow px-4 py-3 text-lg font-bold rounded-xl shadow-lg transition duration-200 
-                                            bg-pink-600 hover:bg-pink-700 text-white relative top-0" style="box-shadow: 0 4px 0 #c95192;">
-            Start
-        </button>
-
-        <!-- 2. Small Reset Button -->
-        <button id="reset-btn" class="h-12 w-12 flex-shrink-0 text-sm font-bold rounded-xl shadow-inner transition duration-200 
-                                       bg-gray-700 hover:bg-gray-600 text-gray-300">
-            <span class="block px-1">RST</span>
-        </button>
-
-        <!-- 3. Counter (Fills remaining space) -->
-        <div id="counter" class="flex-grow px-4 py-3 bg-gray-700 text-lg font-semibold rounded-xl text-center">
-            Next: 1
+    <!-- Records Sidebar -->
+    <div id="records-sidebar" class="flex flex-col ml-8 h-auto max-h-[700px] overflow-y-auto bg-[#101c34] rounded-xl p-4 shadow-xl border border-gray-700">
+        <h2 class="text-xl font-bold mb-4 text-cyan-400 border-b border-cyan-600 pb-2">Top Times (Local)</h2>
+        <div id="records-list" class="space-y-2">
+            <!-- Records will be injected here -->
+            <p class="text-gray-400 text-sm">Loading records...</p>
         </div>
     </div>
 
+    <!-- Main Game Script -->
     <script>
         // DOM Elements
         const gridContainer = document.getElementById('grid-container');
@@ -131,15 +192,118 @@
         const startStopBtn = document.getElementById('start-stop-btn');
         const resetBtn = document.getElementById('reset-btn');
         const blocker = document.getElementById('blocker');
+        const toggleRecordsBtn = document.getElementById('toggle-records-btn');
+        const recordsSidebar = document.getElementById('records-sidebar');
+        const recordsListElement = document.getElementById('records-list');
+        const nameInput = document.getElementById('player-name');
 
         // Game State
-        let gameActive = false; // True when clicking is enabled and timer runs
-        let gameStarted = false; // True once the grid is shuffled
+        let gameActive = false;
+        let gameStarted = false;
         let currentNumber = 1;
         let timerInterval = null;
         let timeElapsedOnPause = 0; 
         let startTime = 0; 
         const allCells = []; 
+
+        const LOCAL_STORAGE_RECORDS_KEY = 'attention_game_records';
+        const LOCAL_STORAGE_NAME_KEY = 'attention_player_name';
+
+        // --- Local Storage Functions ---
+        
+        /**
+         * Loads player name from local storage or sets a default.
+         */
+        function loadPlayerName() {
+            const storedName = localStorage.getItem(LOCAL_STORAGE_NAME_KEY);
+            nameInput.value = storedName || 'Player';
+        }
+
+        /**
+         * Saves player name to local storage on input change.
+         */
+        function savePlayerName() {
+            localStorage.setItem(LOCAL_STORAGE_NAME_KEY, nameInput.value.trim() || 'Player');
+        }
+
+        /**
+         * Loads records from local storage, sorts them by time, and returns the top 10.
+         * @returns {Array<Object>} Sorted list of records.
+         */
+        function loadRecords() {
+            try {
+                const recordsJson = localStorage.getItem(LOCAL_STORAGE_RECORDS_KEY);
+                if (recordsJson) {
+                    let records = JSON.parse(recordsJson);
+                    // Sort by time (ascending) and limit to 10
+                    records.sort((a, b) => a.time - b.time);
+                    return records.slice(0, 10);
+                }
+            } catch (e) {
+                console.error("Error loading records from local storage:", e);
+            }
+            return [];
+        }
+
+        /**
+         * Saves a new record, updates the local storage, and re-renders the list.
+         * @param {number} timeMs - The final time in milliseconds.
+         */
+        function saveRecord(timeMs) {
+            let records = loadRecords();
+            
+            // Ensure the name is saved and up-to-date
+            savePlayerName();
+            const playerName = nameInput.value.trim() || 'Player';
+            
+            const newRecord = {
+                time: timeMs,
+                name: playerName, // Store the current player's name
+                timestamp: Date.now()
+            };
+            
+            records.push(newRecord);
+            
+            // Re-sort and re-limit to maintain top 10
+            records.sort((a, b) => a.time - b.time);
+            records = records.slice(0, 10);
+
+            try {
+                localStorage.setItem(LOCAL_STORAGE_RECORDS_KEY, JSON.stringify(records));
+                renderRecords(records);
+            } catch (e) {
+                console.error("Error saving record to local storage:", e);
+            }
+        }
+
+        /**
+         * Renders the fetched records to the sidebar UI.
+         * @param {Array<Object>} records 
+         */
+        function renderRecords(records) {
+            recordsListElement.innerHTML = '';
+            if (records.length === 0) {
+                recordsListElement.innerHTML = `<p class="text-gray-400 text-sm">No records set yet. Be the first!</p>`;
+                return;
+            }
+
+            records.forEach((record, index) => {
+                const seconds = (record.time / 1000).toFixed(2);
+                const name = record.name || 'Unknown'; // Fallback if name is missing
+
+                const recordDiv = document.createElement('div');
+                recordDiv.classList.add('flex', 'justify-between', 'p-2', 'rounded', 'font-mono', 'text-sm', 'bg-slate-700/50', 'hover:bg-slate-700');
+
+                recordDiv.innerHTML = `
+                    <span class="font-bold w-6 text-center text-cyan-400">${index + 1}.</span>
+                    <span class="flex-grow truncate text-gray-300 px-2">
+                        ${name}
+                    </span>
+                    <span class="w-20 text-right font-bold text-cyan-400">${seconds}s</span>
+                `;
+                recordsListElement.appendChild(recordDiv);
+            });
+        }
 
         // --- Initialization ---
 
@@ -163,6 +327,10 @@
                 gridContainer.appendChild(cell);
                 allCells.push(cell);
             }
+            
+            // Load name and records on startup
+            loadPlayerName();
+            renderRecords(loadRecords());
         }
 
         // --- Game Logic ---
@@ -175,19 +343,16 @@
             return array;
         }
 
-        /**
-         * Prepares the game state and starts the timer.
-         */
         function startGame() {
             if (!gameStarted) {
-                // First time starting the game: shuffle
+                // Ensure name is saved before starting
+                savePlayerName();
                 gameStarted = true;
                 timeElapsedOnPause = 0;
                 
                 let numbers = Array.from({ length: 100 }, (_, i) => i + 1);
                 shuffleArray(numbers);
 
-                // Apply shuffled numbers to cells
                 allCells.forEach((cell, index) => {
                     cell.textContent = numbers[index];
                     cell.classList.remove('clicked'); 
@@ -195,8 +360,9 @@
                 });
             }
 
-            // HIDE THE BLOCKER to reveal the grid
+            // HIDE THE BLOCKER
             blocker.classList.add('blinker-hidden');
+            nameInput.disabled = true; // Lock name input during active game
 
             // Start/Continue the game
             gameActive = true;
@@ -204,7 +370,6 @@
             startTimer();
             counterElement.textContent = `Next: ${currentNumber}`;
             
-            // Re-enable interaction on all non-clicked cells
             allCells.forEach(cell => {
                 if (!cell.classList.contains('clicked')) {
                     cell.classList.remove('inactive');
@@ -212,9 +377,6 @@
             });
         }
         
-        /**
-         * Pauses the timer and prevents grid interaction.
-         */
         function stopGame() {
             if (!gameActive) return;
             
@@ -222,10 +384,10 @@
             stopTimer();
             startStopBtn.textContent = 'Continue';
 
-            // SHOW THE BLOCKER to hide the grid content
+            // SHOW THE BLOCKER
             blocker.classList.remove('blinker-hidden');
+            nameInput.disabled = false; // Re-enable name input during pause
 
-            // Disable interaction
             allCells.forEach(cell => {
                 if (!cell.classList.contains('clicked')) {
                     cell.classList.add('inactive');
@@ -233,9 +395,6 @@
             });
         }
 
-        /**
-         * Handles clicking on a grid cell.
-         */
         function handleCellClick(event) {
             if (!gameActive) return;
 
@@ -261,16 +420,21 @@
             }
         }
         
-        /**
-         * Handles game completion.
-         */
         function winGame() {
             stopTimer();
             gameActive = false;
             gameStarted = false;
-            counterElement.textContent = `Completed in ${timerElement.textContent}s!`;
-            startStopBtn.textContent = 'Play Again';
             
+            const finalTimeMs = timeElapsedOnPause; // Total time in ms
+            const finalTimeSeconds = (finalTimeMs / 1000).toFixed(2);
+
+            counterElement.textContent = `Completed in ${finalTimeSeconds}s!`;
+            startStopBtn.textContent = 'Play Again';
+            nameInput.disabled = false;
+            
+            // SAVE THE RECORD to Local Storage
+            saveRecord(finalTimeMs);
+
             // Re-enable the blocker to show the completion state
             blocker.classList.remove('blinker-hidden');
             blocker.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400 mb-4 animate-bounce">
@@ -278,13 +442,10 @@
                                     <path d="M22 4 12 14.01l-3-3"/>
                                 </svg>
                                 <span class="text-xl font-semibold text-green-300">
-                                    Game Won!
+                                    Game Won! Time: ${finalTimeSeconds}s
                                 </span>`;
         }
 
-        /**
-         * Resets the entire game to the initial, ordered, inactive state.
-         */
         function resetGame() {
             stopTimer();
             gameActive = false;
@@ -294,10 +455,11 @@
             timerElement.textContent = '00.00';
             counterElement.textContent = 'Next: 1';
             startStopBtn.textContent = 'Start';
+            nameInput.disabled = false; // Always re-enable on reset
 
             // SHOW THE BLOCKER and reset its content
             blocker.classList.remove('blinker-hidden');
-            blocker.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-pink-400 mb-4 animate-pulse">
+            blocker.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-400 mb-4 animate-pulse">
                                     <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
                                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                 </svg>
@@ -317,18 +479,12 @@
 
         // --- Timer Functions ---
 
-        /**
-         * Starts the timer from the current elapsed time.
-         */
         function startTimer() {
             stopTimer(); 
             startTime = Date.now();
             timerInterval = setInterval(updateTimer, 10); 
         }
 
-        /**
-         * Stops the timer and updates timeElapsedOnPause.
-         */
         function stopTimer() {
             clearInterval(timerInterval);
             if (startTime > 0) {
@@ -337,9 +493,6 @@
             }
         }
 
-        /**
-         * Updates the timer display.
-         */
         function updateTimer() {
             let totalTime = timeElapsedOnPause;
             if (startTime > 0) {
@@ -361,8 +514,15 @@
         });
         
         resetBtn.addEventListener('click', resetGame);
+        
+        toggleRecordsBtn.addEventListener('click', () => {
+            recordsSidebar.classList.toggle('expanded');
+        });
 
-        // Initialize the grid when the script loads
+        // Save name whenever the input changes
+        nameInput.addEventListener('input', savePlayerName);
+
+        // Initialize the grid and load records when the script loads
         initializeGrid();
     </script>
 
