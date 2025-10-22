@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>100 Number Grid Game - Dark Pink</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for a clean look */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* The main pink surface container */
+        #grid-container {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            border-radius: 1rem;
+            box-shadow: 0 0 30px rgba(255, 105, 180, 0.5); /* Pink shadow for glow effect */
+        }
+        
+        /* Individual grid cells */
+        .grid-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 700; /* font-bold */
+            cursor: pointer;
+            transition: background-color 0.1s, transform 0.1s;
+            border: 1px solid rgba(0, 0, 0, 0.1); /* Subtle dark border on pink */
+            color: white; /* Default text color */
+        }
+
+        /* Hover effect */
+        .grid-cell:hover {
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+
+        /* Inactive state before the game starts */
+        .grid-cell.inactive {
+            cursor: not-allowed;
+            background-color: #52525b; /* Gray-600 for inactive cells */
+            color: #a1a1aa; /* Gray-400 text */
+            pointer-events: none; /* Disables clicks */
+        }
+
+        /* Cell state when it has been correctly clicked */
+        .grid-cell.clicked {
+            background-color: #9d174d; /* Pink-800, darker shade */
+            color: white;
+            opacity: 0.2; /* Make it fade out */
+            pointer-events: none;
+        }
+
+        /* Responsive Container */
+        #game-area {
+            width: 90vw;
+            max-width: 600px;
+            aspect-ratio: 1 / 1; /* Ensures it's always square */
+        }
+
+        @media (min-width: 768px) {
+            .grid-cell {
+                font-size: 1.5rem; /* text-2xl on desktop */
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center p-4">
+
+    <div id="timer" class="text-6xl font-extrabold text-cyan-400 mb-6 mt-4 tabular-nums">00.00</div>
+
+    <div id="game-area" class="flex-shrink-0">
+        <div id="grid-container" class="bg-pink-500">
+            <!-- Grid Cells will be inserted here by JavaScript -->
+        </div>
+    </div>
+    
+    <div id="controls" class="flex flex-col sm:flex-row gap-4 sm:gap-8 items-center mt-8 w-full max-w-sm">
+        <button id="start-reset-btn" class="w-full sm:w-auto px-8 py-3 text-lg font-bold rounded-xl shadow-lg transition duration-200 
+                                            bg-pink-600 hover:bg-pink-700 text-white transform hover:scale-[1.03] active:scale-[0.98]">
+            Start
+        </button>
+        <div id="counter" class="w-full sm:w-auto px-6 py-3 bg-gray-700 text-lg font-semibold rounded-xl text-center">
+            Next: 1
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const gridContainer = document.getElementById('grid-container');
+        const timerElement = document.getElementById('timer');
+        const counterElement = document.getElementById('counter');
+        const startResetBtn = document.getElementById('start-reset-btn');
+
+        // Game State
+        let gameActive = false;
+        let currentNumber = 1;
+        let timerInterval = null;
+        let startTime = 0;
+        const allCells = []; // Array to store all cell DOM elements
+
+        // --- Initialization ---
+
+        /**
+         * Creates the 100 grid cells and adds them to the DOM.
+         */
+        function initializeGrid() {
+            gridContainer.innerHTML = '';
+            allCells.length = 0; // Clear existing cells
+            
+            for (let i = 1; i <= 100; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('grid-cell', 'inactive');
+                
+                // Add rounded corners only to the perimeter cells for better aesthetic
+                if (i === 1) cell.classList.add('rounded-tl-xl');
+                if (i === 10) cell.classList.add('rounded-tr-xl');
+                if (i === 91) cell.classList.add('rounded-bl-xl');
+                if (i === 100) cell.classList.add('rounded-br-xl');
+                
+                cell.textContent = i;
+                cell.dataset.number = i; // Store the original number
+                cell.addEventListener('click', handleCellClick);
+                gridContainer.appendChild(cell);
+                allCells.push(cell);
+            }
+        }
+
+        // --- Game Logic ---
+
+        /**
+         * Shuffles the numbers 1-100 and applies them to the grid cells.
+         */
+        function shuffleAndFillGrid() {
+            let numbers = Array.from({ length: 100 }, (_, i) => i + 1);
+            
+            // Fisher-Yates Shuffle
+            for (let i = numbers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [numbers[i], numbers[j]] = [numbers[j], numbers[i]]; 
+            }
+
+            // Apply shuffled numbers to cells
+            allCells.forEach((cell, index) => {
+                cell.textContent = numbers[index];
+                cell.classList.remove('clicked', 'inactive');
+                cell.style.display = 'flex'; // Ensure all are visible
+            });
+        }
+
+        /**
+         * Starts the game: shuffles grid, starts timer, updates UI.
+         */
+        function startGame() {
+            gameActive = true;
+            currentNumber = 1;
+            startResetBtn.textContent = 'Reset';
+            counterElement.textContent = `Next: ${currentNumber}`;
+            
+            shuffleAndFillGrid();
+            startTimer();
+        }
+
+        /**
+         * Resets the game to its initial state (ordered, inactive).
+         */
+        function resetGame() {
+            gameActive = false;
+            stopTimer();
+            timerElement.textContent = '00.00';
+            currentNumber = 1;
+            counterElement.textContent = 'Next: 1';
+            startResetBtn.textContent = 'Start';
+
+            // Reset cells to ordered, inactive state
+            allCells.forEach((cell, index) => {
+                cell.textContent = index + 1;
+                cell.classList.add('inactive');
+                cell.classList.remove('clicked');
+                cell.style.display = 'flex'; 
+            });
+        }
+
+        /**
+         * Handles clicking on a grid cell.
+         */
+        function handleCellClick(event) {
+            if (!gameActive) return;
+
+            const clickedCell = event.target;
+            const clickedNumber = parseInt(clickedCell.textContent, 10);
+
+            if (clickedNumber === currentNumber) {
+                // Correct click
+                clickedCell.classList.add('clicked'); 
+                
+                // Check for win condition
+                if (currentNumber === 100) {
+                    winGame();
+                } else {
+                    // Advance to the next number
+                    currentNumber++;
+                    counterElement.textContent = `Next: ${currentNumber}`;
+                }
+            } else {
+                // Incorrect click - can add visual feedback here
+                // For example, a temporary flash of red on the cell or border
+                clickedCell.classList.add('ring-4', 'ring-red-500', 'ring-opacity-70');
+                setTimeout(() => {
+                    clickedCell.classList.remove('ring-4', 'ring-red-500', 'ring-opacity-70');
+                }, 150);
+            }
+        }
+        
+        /**
+         * Called when the user successfully clicks 100.
+         */
+        function winGame() {
+            stopTimer();
+            gameActive = false;
+            counterElement.textContent = 'YOU WIN! 🎉';
+            // The button remains 'Reset' to allow a quick replay
+            startResetBtn.textContent = 'Play Again';
+        }
+
+        // --- Timer Functions ---
+
+        /**
+         * Starts the game timer.
+         */
+        function startTimer() {
+            stopTimer(); 
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimer, 10); 
+        }
+
+        /**
+         * Stops the game timer.
+         */
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        /**
+         * Updates the timer display with the elapsed time.
+         */
+        function updateTimer() {
+            const elapsedTime = (Date.now() - startTime) / 1000;
+            // Format to two decimal places, padded with a leading zero for single-digit seconds
+            timerElement.textContent = elapsedTime.toFixed(2).padStart(5, '0');
+        }
+
+        // --- Event Listener and Startup ---
+
+        startResetBtn.addEventListener('click', () => {
+            if (gameActive) {
+                resetGame();
+            } else {
+                startGame();
+            }
+        });
+
+        // Initialize the grid when the script loads
+        initializeGrid();
+    </script>
+
+</body>
+</html>
