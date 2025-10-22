@@ -44,15 +44,21 @@
             transform: scale(1.02);
         }
 
-        /* Inactive state before the game starts */
+        /* Inactive state before the game starts or when paused/stopped */
         .grid-cell.inactive {
             cursor: not-allowed;
             background-color: #52525b; /* Gray-600 for inactive cells */
             color: #a1a1aa; /* Gray-400 text */
-            pointer-events: none; /* Disables clicks */
+            pointer-events: none; 
+            transition: none; /* Disable hover/scale when inactive */
         }
-
-        /* Cell state when it has been correctly clicked */
+        
+        /* When active, but not the correct number */
+        .grid-cell:not(.inactive) {
+             background-color: #ec4899; /* Pink-500 */
+        }
+        
+        /* Correctly clicked cell */
         .grid-cell.clicked {
             background-color: #9d174d; /* Pink-800, darker shade */
             color: white;
@@ -64,13 +70,13 @@
         #game-area {
             width: 90vw;
             max-width: 600px;
-            aspect-ratio: 1 / 1; /* Ensures it's always square */
+            aspect-ratio: 1 / 1; 
         }
 
-        @media (min-width: 768px) {
-            .grid-cell {
-                font-size: 1.5rem; /* text-2xl on desktop */
-            }
+        /* Active button state transition */
+        .btn-primary:active {
+            box-shadow: 0 0px 0 #a2125e;
+            top: 4px;
         }
     </style>
 </head>
@@ -84,12 +90,21 @@
         </div>
     </div>
     
-    <div id="controls" class="flex flex-col sm:flex-row gap-4 sm:gap-8 items-center mt-8 w-full max-w-sm">
-        <button id="start-reset-btn" class="w-full sm:w-auto px-8 py-3 text-lg font-bold rounded-xl shadow-lg transition duration-200 
-                                            bg-pink-600 hover:bg-pink-700 text-white transform hover:scale-[1.03] active:scale-[0.98]">
+    <div id="controls" class="flex items-center gap-4 mt-8 w-full max-w-xl">
+        <!-- 1. Primary Button (Start/Stop) -->
+        <button id="start-stop-btn" class="btn-primary flex-grow px-4 py-3 text-lg font-bold rounded-xl shadow-lg transition duration-200 
+                                            bg-pink-600 hover:bg-pink-700 text-white relative top-0" style="box-shadow: 0 4px 0 #c95192;">
             Start
         </button>
-        <div id="counter" class="w-full sm:w-auto px-6 py-3 bg-gray-700 text-lg font-semibold rounded-xl text-center">
+
+        <!-- 2. Small Reset Button -->
+        <button id="reset-btn" class="h-12 w-12 flex-shrink-0 text-sm font-bold rounded-xl shadow-inner transition duration-200 
+                                       bg-gray-700 hover:bg-gray-600 text-gray-300">
+            <span class="block px-1">RST</span>
+        </button>
+
+        <!-- 3. Counter (Fills remaining space) -->
+        <div id="counter" class="flex-grow px-4 py-3 bg-gray-700 text-lg font-semibold rounded-xl text-center">
             Next: 1
         </div>
     </div>
@@ -99,36 +114,36 @@
         const gridContainer = document.getElementById('grid-container');
         const timerElement = document.getElementById('timer');
         const counterElement = document.getElementById('counter');
-        const startResetBtn = document.getElementById('start-reset-btn');
+        const startStopBtn = document.getElementById('start-stop-btn');
+        const resetBtn = document.getElementById('reset-btn');
 
         // Game State
-        let gameActive = false;
+        let gameActive = false; // True when clicking is enabled and timer runs
+        let gameStarted = false; // True once the grid is shuffled and a timer has begun
         let currentNumber = 1;
         let timerInterval = null;
-        let startTime = 0;
-        const allCells = []; // Array to store all cell DOM elements
+        let timeElapsedOnPause = 0; // Stores total time elapsed when paused
+        let startTime = 0; // Unix timestamp when the timer last started
+        const allCells = []; 
 
         // --- Initialization ---
 
-        /**
-         * Creates the 100 grid cells and adds them to the DOM.
-         */
         function initializeGrid() {
             gridContainer.innerHTML = '';
-            allCells.length = 0; // Clear existing cells
+            allCells.length = 0;
             
             for (let i = 1; i <= 100; i++) {
                 const cell = document.createElement('div');
                 cell.classList.add('grid-cell', 'inactive');
                 
-                // Add rounded corners only to the perimeter cells for better aesthetic
+                // Add rounded corners only to the perimeter cells
                 if (i === 1) cell.classList.add('rounded-tl-xl');
                 if (i === 10) cell.classList.add('rounded-tr-xl');
                 if (i === 91) cell.classList.add('rounded-bl-xl');
                 if (i === 100) cell.classList.add('rounded-br-xl');
                 
                 cell.textContent = i;
-                cell.dataset.number = i; // Store the original number
+                cell.dataset.number = i; 
                 cell.addEventListener('click', handleCellClick);
                 gridContainer.appendChild(cell);
                 allCells.push(cell);
@@ -137,56 +152,63 @@
 
         // --- Game Logic ---
 
-        /**
-         * Shuffles the numbers 1-100 and applies them to the grid cells.
-         */
-        function shuffleAndFillGrid() {
-            let numbers = Array.from({ length: 100 }, (_, i) => i + 1);
-            
-            // Fisher-Yates Shuffle
-            for (let i = numbers.length - 1; i > 0; i--) {
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [numbers[i], numbers[j]] = [numbers[j], numbers[i]]; 
+                [array[i], array[j]] = [array[j], array[i]]; 
             }
-
-            // Apply shuffled numbers to cells
-            allCells.forEach((cell, index) => {
-                cell.textContent = numbers[index];
-                cell.classList.remove('clicked', 'inactive');
-                cell.style.display = 'flex'; // Ensure all are visible
-            });
+            return array;
         }
 
         /**
-         * Starts the game: shuffles grid, starts timer, updates UI.
+         * Prepares the game state and starts the timer.
          */
         function startGame() {
+            if (!gameStarted) {
+                // First time starting the game
+                gameStarted = true;
+                timeElapsedOnPause = 0;
+                let numbers = Array.from({ length: 100 }, (_, i) => i + 1);
+                shuffleArray(numbers);
+
+                // Apply shuffled numbers to cells
+                allCells.forEach((cell, index) => {
+                    cell.textContent = numbers[index];
+                    cell.classList.remove('inactive'); // Enable interaction
+                    cell.classList.remove('clicked'); 
+                    cell.style.display = 'flex'; 
+                });
+            }
+
+            // Start/Continue the game
             gameActive = true;
-            currentNumber = 1;
-            startResetBtn.textContent = 'Reset';
+            startStopBtn.textContent = 'Stop';
+            startTimer();
             counterElement.textContent = `Next: ${currentNumber}`;
             
-            shuffleAndFillGrid();
-            startTimer();
+            // Re-enable click ability on cells that aren't yet clicked
+            allCells.forEach(cell => {
+                if (!cell.classList.contains('clicked')) {
+                    cell.classList.remove('inactive');
+                }
+            });
         }
-
+        
         /**
-         * Resets the game to its initial state (ordered, inactive).
+         * Pauses the timer and prevents grid interaction.
          */
-        function resetGame() {
+        function stopGame() {
+            if (!gameActive) return;
+            
             gameActive = false;
-            stopTimer();
-            timerElement.textContent = '00.00';
-            currentNumber = 1;
-            counterElement.textContent = 'Next: 1';
-            startResetBtn.textContent = 'Start';
+            stopTimer(); // Pauses the timer and stores elapsed time
+            startStopBtn.textContent = 'Continue';
 
-            // Reset cells to ordered, inactive state
-            allCells.forEach((cell, index) => {
-                cell.textContent = index + 1;
-                cell.classList.add('inactive');
-                cell.classList.remove('clicked');
-                cell.style.display = 'flex'; 
+            // Disable interaction
+            allCells.forEach(cell => {
+                if (!cell.classList.contains('clicked')) {
+                    cell.classList.add('inactive');
+                }
             });
         }
 
@@ -203,71 +225,103 @@
                 // Correct click
                 clickedCell.classList.add('clicked'); 
                 
-                // Check for win condition
                 if (currentNumber === 100) {
                     winGame();
                 } else {
-                    // Advance to the next number
                     currentNumber++;
                     counterElement.textContent = `Next: ${currentNumber}`;
                 }
             } else {
-                // Incorrect click - can add visual feedback here
-                // For example, a temporary flash of red on the cell or border
-                clickedCell.classList.add('ring-4', 'ring-red-500', 'ring-opacity-70');
+                // Incorrect click: momentary visual feedback
+                clickedCell.classList.add('ring-4', 'ring-red-500', 'ring-opacity-70', 'scale-105');
                 setTimeout(() => {
-                    clickedCell.classList.remove('ring-4', 'ring-red-500', 'ring-opacity-70');
+                    clickedCell.classList.remove('ring-4', 'ring-red-500', 'ring-opacity-70', 'scale-105');
                 }, 150);
             }
         }
         
         /**
-         * Called when the user successfully clicks 100.
+         * Handles game completion.
          */
         function winGame() {
             stopTimer();
             gameActive = false;
+            gameStarted = false;
             counterElement.textContent = 'YOU WIN! 🎉';
-            // The button remains 'Reset' to allow a quick replay
-            startResetBtn.textContent = 'Play Again';
+            startStopBtn.textContent = 'Start Over';
+        }
+
+        /**
+         * Resets the entire game to the initial, ordered, inactive state.
+         */
+        function resetGame() {
+            stopTimer();
+            gameActive = false;
+            gameStarted = false;
+            timeElapsedOnPause = 0;
+            currentNumber = 1;
+            timerElement.textContent = '00.00';
+            counterElement.textContent = 'Next: 1';
+            startStopBtn.textContent = 'Start';
+
+            // Reset cells to ordered, inactive state
+            allCells.forEach((cell, index) => {
+                cell.textContent = index + 1;
+                cell.classList.add('inactive');
+                cell.classList.remove('clicked');
+                cell.style.display = 'flex'; 
+            });
         }
 
         // --- Timer Functions ---
 
         /**
-         * Starts the game timer.
+         * Starts the timer from the current elapsed time.
          */
         function startTimer() {
-            stopTimer(); 
+            stopTimer(false); // Do not update timeElapsedOnPause when starting
             startTime = Date.now();
             timerInterval = setInterval(updateTimer, 10); 
         }
 
         /**
-         * Stops the game timer.
+         * Stops the timer and updates timeElapsedOnPause.
+         * @param {boolean} shouldUpdateElapsed - Whether to update timeElapsedOnPause (true for pause/stop).
          */
         function stopTimer() {
             clearInterval(timerInterval);
+            // Calculate and store time elapsed *during* the last active period
+            if (startTime > 0) {
+                timeElapsedOnPause += (Date.now() - startTime);
+                startTime = 0; 
+            }
         }
 
         /**
-         * Updates the timer display with the elapsed time.
+         * Updates the timer display.
          */
         function updateTimer() {
-            const elapsedTime = (Date.now() - startTime) / 1000;
-            // Format to two decimal places, padded with a leading zero for single-digit seconds
-            timerElement.textContent = elapsedTime.toFixed(2).padStart(5, '0');
+            let totalTime = timeElapsedOnPause;
+            if (startTime > 0) {
+                totalTime += (Date.now() - startTime);
+            }
+            
+            const seconds = totalTime / 1000;
+            timerElement.textContent = seconds.toFixed(2).padStart(5, '0');
         }
 
         // --- Event Listener and Startup ---
 
-        startResetBtn.addEventListener('click', () => {
+        startStopBtn.addEventListener('click', () => {
             if (gameActive) {
-                resetGame();
+                stopGame(); // Pause the game
             } else {
-                startGame();
+                startGame(); // Start or Continue the game
             }
         });
+        
+        resetBtn.addEventListener('click', resetGame);
+
 
         // Initialize the grid when the script loads
         initializeGrid();
