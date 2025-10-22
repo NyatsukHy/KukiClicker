@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>100 Number Grid Game - Dark Pink</title>
+    <title>Attension is ALL you need</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -36,10 +36,11 @@
             transition: background-color 0.1s, transform 0.1s;
             border: 1px solid rgba(0, 0, 0, 0.1); /* Subtle dark border on pink */
             color: white; /* Default text color */
+             background-color: #ec4899; /* Pink-500 when active */
         }
 
         /* Hover effect */
-        .grid-cell:hover {
+        .grid-cell:hover:not(.inactive) {
             opacity: 0.9;
             transform: scale(1.02);
         }
@@ -50,12 +51,7 @@
             background-color: #52525b; /* Gray-600 for inactive cells */
             color: #a1a1aa; /* Gray-400 text */
             pointer-events: none; 
-            transition: none; /* Disable hover/scale when inactive */
-        }
-        
-        /* When active, but not the correct number */
-        .grid-cell:not(.inactive) {
-             background-color: #ec4899; /* Pink-500 */
+            transition: none;
         }
         
         /* Correctly clicked cell */
@@ -78,15 +74,33 @@
             box-shadow: 0 0px 0 #a2125e;
             top: 4px;
         }
+        
+        /* Class to hide the blocker completely */
+        .blinker-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center p-4">
 
     <div id="timer" class="text-6xl font-extrabold text-cyan-400 mb-6 mt-4 tabular-nums">00.00</div>
 
-    <div id="game-area" class="flex-shrink-0">
+    <div id="game-area" class="flex-shrink-0 relative">
         <div id="grid-container" class="bg-pink-500">
             <!-- Grid Cells will be inserted here by JavaScript -->
+        </div>
+        
+        <!-- Blocker Overlay with SVG Lock Icon -->
+        <div id="blocker" class="absolute inset-0 bg-gray-900/95 flex flex-col items-center justify-center rounded-xl transition-opacity duration-300 z-10">
+             <!-- Lock SVG (Lucide-React style) -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-pink-400 mb-4 animate-pulse">
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span class="text-xl font-semibold text-gray-300">
+                Grid is Locked
+            </span>
         </div>
     </div>
     
@@ -116,14 +130,15 @@
         const counterElement = document.getElementById('counter');
         const startStopBtn = document.getElementById('start-stop-btn');
         const resetBtn = document.getElementById('reset-btn');
+        const blocker = document.getElementById('blocker');
 
         // Game State
         let gameActive = false; // True when clicking is enabled and timer runs
-        let gameStarted = false; // True once the grid is shuffled and a timer has begun
+        let gameStarted = false; // True once the grid is shuffled
         let currentNumber = 1;
         let timerInterval = null;
-        let timeElapsedOnPause = 0; // Stores total time elapsed when paused
-        let startTime = 0; // Unix timestamp when the timer last started
+        let timeElapsedOnPause = 0; 
+        let startTime = 0; 
         const allCells = []; 
 
         // --- Initialization ---
@@ -165,20 +180,23 @@
          */
         function startGame() {
             if (!gameStarted) {
-                // First time starting the game
+                // First time starting the game: shuffle
                 gameStarted = true;
                 timeElapsedOnPause = 0;
+                
                 let numbers = Array.from({ length: 100 }, (_, i) => i + 1);
                 shuffleArray(numbers);
 
                 // Apply shuffled numbers to cells
                 allCells.forEach((cell, index) => {
                     cell.textContent = numbers[index];
-                    cell.classList.remove('inactive'); // Enable interaction
                     cell.classList.remove('clicked'); 
                     cell.style.display = 'flex'; 
                 });
             }
+
+            // HIDE THE BLOCKER to reveal the grid
+            blocker.classList.add('blinker-hidden');
 
             // Start/Continue the game
             gameActive = true;
@@ -186,7 +204,7 @@
             startTimer();
             counterElement.textContent = `Next: ${currentNumber}`;
             
-            // Re-enable click ability on cells that aren't yet clicked
+            // Re-enable interaction on all non-clicked cells
             allCells.forEach(cell => {
                 if (!cell.classList.contains('clicked')) {
                     cell.classList.remove('inactive');
@@ -201,8 +219,11 @@
             if (!gameActive) return;
             
             gameActive = false;
-            stopTimer(); // Pauses the timer and stores elapsed time
+            stopTimer();
             startStopBtn.textContent = 'Continue';
+
+            // SHOW THE BLOCKER to hide the grid content
+            blocker.classList.remove('blinker-hidden');
 
             // Disable interaction
             allCells.forEach(cell => {
@@ -247,8 +268,18 @@
             stopTimer();
             gameActive = false;
             gameStarted = false;
-            counterElement.textContent = 'YOU WIN! 🎉';
-            startStopBtn.textContent = 'Start Over';
+            counterElement.textContent = `Completed in ${timerElement.textContent}s!`;
+            startStopBtn.textContent = 'Play Again';
+            
+            // Re-enable the blocker to show the completion state
+            blocker.classList.remove('blinker-hidden');
+            blocker.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400 mb-4 animate-bounce">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <path d="M22 4 12 14.01l-3-3"/>
+                                </svg>
+                                <span class="text-xl font-semibold text-green-300">
+                                    Game Won!
+                                </span>`;
         }
 
         /**
@@ -263,6 +294,17 @@
             timerElement.textContent = '00.00';
             counterElement.textContent = 'Next: 1';
             startStopBtn.textContent = 'Start';
+
+            // SHOW THE BLOCKER and reset its content
+            blocker.classList.remove('blinker-hidden');
+            blocker.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-pink-400 mb-4 animate-pulse">
+                                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                <span class="text-xl font-semibold text-gray-300">
+                                    Grid is Locked
+                                </span>`;
+
 
             // Reset cells to ordered, inactive state
             allCells.forEach((cell, index) => {
@@ -279,18 +321,16 @@
          * Starts the timer from the current elapsed time.
          */
         function startTimer() {
-            stopTimer(false); // Do not update timeElapsedOnPause when starting
+            stopTimer(); 
             startTime = Date.now();
             timerInterval = setInterval(updateTimer, 10); 
         }
 
         /**
          * Stops the timer and updates timeElapsedOnPause.
-         * @param {boolean} shouldUpdateElapsed - Whether to update timeElapsedOnPause (true for pause/stop).
          */
         function stopTimer() {
             clearInterval(timerInterval);
-            // Calculate and store time elapsed *during* the last active period
             if (startTime > 0) {
                 timeElapsedOnPause += (Date.now() - startTime);
                 startTime = 0; 
@@ -321,7 +361,6 @@
         });
         
         resetBtn.addEventListener('click', resetGame);
-
 
         // Initialize the grid when the script loads
         initializeGrid();
